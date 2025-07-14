@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Burst Data Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="{{ url_for('static', path='/js/app.js') }}" defer></script>
+</head>
+
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-600 mb-2">Burst Data Analyzer</h1>
+            <p class="text-gray-600">Upload your Excel file to analyze burst data and generate comprehensive reports</p>
+        </header>
+
+        <!-- Upload Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4">Upload Excel File</h2>
+            <div id="dropzone"
+                class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 transition-colors">
+                <input type="file" id="fileInput" accept=".xlsx,.xls" class="hidden">
+                <div class="mb-4">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path
+                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                </div>
+                <p class="text-lg text-gray-600 mb-2">Click to select or drag and drop your Excel file</p>
+                <p class="text-sm text-gray-500">Supports .xlsx and .xls files</p>
+                <div id="fileName" class="mt-2 text-sm text-blue-600 hidden"></div>
+            </div>
+
+            <div id="uploadStatus" class="mt-4 hidden">
+                <div class="flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span class="ml-2 text-blue-600">Processing file...</span>
+                </div>
+            </div>
+
+            <div id="errorMessage" class="mt-4 hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            </div>
+        </div>
+        <!-- Results Section -->
+        <div id="resultsSection" class="hidden">
+            <!-- Summary Statistics -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Summary Statistics</h2>
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <h3 class="font-semibold text-gray-600 mb-2">Total Bursts</h3>
+                        <p id="totalBursts" class="stat-number">-</p>
+                    </div>
+                    <div class="summary-card">
+
+                        <h3 class="font-semibold text-gray-600 mb-2">Unique Officers</h3>
+                        <p id="uniqueOfficers" class="stat-number">-</p>
+                    </div>
+                    <div class="summary-card">
+                        <h3 class="font-semibold text-gray-600 mb-2">Unique Regions</h3>
+                        <p id="uniqueRegions" class="stat-number">-</p>
+                    </div>
+                    <div class="summary-card">
+                        <h3 class="font-semibold text-gray-600 mb-2">Pipe Sizes</h3>
+                        <p id="uniquePipeSizes" class="stat-number">-</p>
+                    </div>
+                    <div class="summary-card">
+                        <h3 class="font-semibold text-gray-600 mb-2">Date Range</h3>
+                        <p id="dateRange" class="stat-text">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4">Top Officers by Bursts Fixed</h3>
+                    <div class="chart-container">
+                        <canvas id="officerChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4">Regional Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="regionalChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4">Pipe Size Analysis</h3>
+                    <div class="chart-container">
+                        <canvas id="pipeSizeChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h3 class="text-xl font-semibold mb-4">Monthly Trends</h3>
+                    <div class="chart-container">
+                        <canvas id="monthlyTrendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Officer Selection -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Officer Analysis</h2>
+                <div class="flex items-center space-x-4 mb-4">
+                    <label for="officerSelect" class="text-sm font-medium text-gray-700">Select Officer:</label>
+                    <select id="officerSelect"
+                        class="block w-60 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Choose an officer...</option>
+                    </select>
+                </div>
+                <div id="officerDetails" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-blue-50 p-4 rounded">
+                            <h4 class="font-semibold text-blue-600">Total Bursts</h4>
+                            <p id="officerTotalBursts" class="text-2xl font-bold text-blue-800">-</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded">
+                            <h4 class="font-semibold text-green-600">Regions Worked</h4>
+                            <p id="officerRegions" class="text-2xl font-bold text-green-800">-</p>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded">
+                            <h4 class="font-semibold text-purple-600">Most Common Pipe</h4>
+                            <p id="officerCommonPipe" class="text-lg font-bold text-purple-800">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Tables -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold">Detailed Analysis</h2>
+                    <div class="space-x-2">
+                        <button onclick="showTable('officers')"
+                            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors">
+                            Officers
+                        </button>
+                        <button onclick="showTable('regions')"
+                            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition-colors">
+                            Regions
+                        </button>
+                        <button onclick="showTable('pipes')"
+                            class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded transition-colors">
+                            Pipe Sizes
+                        </button>
+                        <button onclick="showTable('raw')"
+                            class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded transition-colors">
+                            Raw Data
+                        </button>
+                    </div>
+                </div>
+                <div id="dataTableContainer" class="overflow-x-auto">
+                    <!-- Dynamic table content will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Export Options -->
+            <!-- Add this section to your HTML where the export options are -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-2xl font-semibold mb-4">Export Reports</h2>
+
+                <div class="mb-4">
+                    <label for="reportType" class="block text-sm font-medium text-gray-700 mb-2">
+                        Select Report Type:
+                    </label>
+                    <select id="reportType"
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">All Reports (4 sheets)</option>
+                        <option value="officer">Officer Bursts Report</option>
+                        <option value="date">Date Bursts Report</option>
+                        <option value="pipe">Pipe Size Bursts Report</option>
+                        <option value="region">Region Bursts Report</option>
+                    </select>
+                </div>
+
+                <button onclick="generateSelectedReport()"
+                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded transition-colors">
+                    Generate Selected Report
+                </button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+</body>
+
+</html>
