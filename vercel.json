@@ -1,14 +1,11 @@
 {
-    "version": 3,
-    "public": false,
-    "cleanUrls": true,
-    "trailingSlash": false,
-    "headers": [
-      {
-        "source": "/(.*)",
-        "headers": [
-          { "key": "Access-Control-Allow-Origin", "value": "*" }
-        ]
+    "functions": {
+      "api/index.py": {
+        "runtime": "python3.9"
       }
+    },
+    "routes": [
+      { "src": "/.*", "dest": "api/index.py" }
     ]
   }
+  
